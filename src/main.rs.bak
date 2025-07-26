@@ -1,0 +1,45 @@
+use std::future::Future;
+use std::pin::Pin;
+use std::task::{Context, Poll};
+
+// 1. futuresクレートは、Futureの操作に関するユーティリティを提供するクレートである。
+use futures::executor::block_on;
+use futures::future::FutureExt;
+
+struct Number {
+    val: i32,
+}
+
+// 2. Number型に対してFutureトレイトを実装する。
+// この実装は、単に保持するvalフィールドの値を即座に返すだけである。
+
+impl Future for Number {
+    // 3. Futureの返す値としてi32型を指定する。
+    type Output = i32;
+    // 4. poll関数を実装する。呼び出されると、常にReadyで内部に保持する値を返す。
+    // 第1引数のselfはPinという特殊なものになる。
+    fn poll(self: Pin<&mut Self>, cx: &mut Context) -> Poll<Self::Output> {
+        std::task::Poll::Ready(self.val)
+    }
+}
+
+// 5. 下記の例であるが、Futureを返す関数を定義する。
+
+fn a1() -> impl Future<Output = i32> {
+    Number { val: 1 }
+}
+
+fn a2() -> impl Future<Output = i32> {
+    Number { val: 2 }
+}
+
+fn ans(a: i32, b: i32) -> impl Future<Output = i32> {
+    Number { val: a + b }
+}
+
+fn main() {
+    // 6. futures::executor:;block_on関数は、Futureを実行するために必要になる。
+    // a1関数とa2関数を実行後、それらの値をans関数に渡して足し算される。
+    let ans = block_on(a1().then(|a| a2().then(move |b| ans(a, b))));
+    println!("{}", ans);
+}
